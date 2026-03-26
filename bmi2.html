@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMI 计算器</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: #eef2ff;
+            min-height: 100vh;
+            padding: 24px 16px 40px;
+        }
+
+        .container { max-width: 760px; margin: 0 auto; }
+
+        .page-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1e1b4b;
+            margin-bottom: 20px;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── 布局 ── */
+        .layout { display: flex; gap: 16px; align-items: flex-start; }
+        .left   { flex: 1; min-width: 0; order: 1; }
+        .right  { width: 196px; flex-shrink: 0; order: 2; }
+
+        /* ── 卡片 ── */
+        .card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 22px;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 16px rgba(99,102,241,0.08);
+        }
+
+        /* ── 输入区 ── */
+        .field { margin-bottom: 16px; }
+        .field label { display: block; font-size: 12px; font-weight: 600; color: #6366f1; letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 8px; }
+
+        .input-row { display: flex; gap: 8px; align-items: center; }
+
+        input[type="number"] {
+            flex: 1; min-width: 0;
+            padding: 12px 14px;
+            border: 2px solid #e0e7ff;
+            border-radius: 12px;
+            font-size: 17px;
+            font-weight: 500;
+            color: #1e1b4b;
+            outline: none;
+            background: #f8f9ff;
+            transition: border-color 0.2s, background 0.2s;
+            -moz-appearance: textfield;
+        }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+        input[type="number"]:focus { border-color: #6366f1; background: #fff; }
+
+        .unit-fixed {
+            font-size: 13px; font-weight: 600; color: #a5b4fc;
+            white-space: nowrap; padding: 0 4px;
+        }
+
+        .seg { display: flex; background: #f1f0fe; border-radius: 10px; padding: 3px; gap: 2px; }
+        .seg button {
+            flex: 1; padding: 8px 12px; border: none; background: transparent;
+            border-radius: 8px; font-size: 13px; font-weight: 500; color: #6366f1;
+            cursor: pointer; transition: all 0.18s; white-space: nowrap;
+        }
+        .seg button.active {
+            background: #6366f1; color: #fff;
+            box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+        }
+
+        /* 计算按钮 */
+        .btn-calc {
+            width: 100%; padding: 14px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: #fff; border: none; border-radius: 14px;
+            font-size: 16px; font-weight: 600;
+            cursor: pointer; letter-spacing: 0.5px;
+            box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+            transition: opacity 0.18s, transform 0.12s;
+        }
+        .btn-calc:hover  { opacity: 0.93; }
+        .btn-calc:active { transform: scale(0.98); }
+
+        /* ── 结果卡片 ── */
+        .result-card {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border-radius: 20px;
+            padding: 22px;
+            margin-bottom: 14px;
+            box-shadow: 0 6px 24px rgba(99,102,241,0.35);
+            display: none;
+        }
+        .result-top { display: flex; align-items: center; gap: 20px; }
+        .bmi-circle {
+            width: 84px; height: 84px; border-radius: 50%;
+            background: rgba(255,255,255,0.18);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            flex-shrink: 0;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .bmi-num  { font-size: 30px; font-weight: 800; color: #fff; line-height: 1; }
+        .bmi-tag  { font-size: 10px; color: rgba(255,255,255,0.7); margin-top: 2px; letter-spacing: 0.5px; }
+        .bmi-right { flex: 1; }
+        .bmi-status-text { font-size: 22px; font-weight: 700; color: #fff; }
+        .bmi-sub  { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 5px; line-height: 1.6; }
+
+        /* 进度条 */
+        .bmi-bar-wrap { margin-top: 16px; }
+        .bmi-bar-track {
+            height: 8px; border-radius: 99px;
+            background: rgba(255,255,255,0.2);
+            position: relative; overflow: hidden;
+        }
+        .bmi-bar-fill {
+            height: 100%; border-radius: 99px;
+            background: rgba(255,255,255,0.85);
+            transition: width 0.5s cubic-bezier(.4,0,.2,1);
+        }
+        .bmi-bar-labels {
+            display: flex; justify-content: space-between;
+            margin-top: 5px;
+        }
+        .bmi-bar-labels span {
+            font-size: 10px; color: rgba(255,255,255,0.55);
+        }
+
+        /* ── 记录 ── */
+        .records-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 14px;
+        }
+        .records-title { font-size: 15px; font-weight: 700; color: #1e1b4b; }
+        .btn-clear {
+            border: none; background: none;
+            font-size: 12px; font-weight: 500; color: #c4b5fd;
+            cursor: pointer; padding: 4px 8px; border-radius: 6px;
+            transition: all 0.15s;
+        }
+        .btn-clear:hover { background: #fef2f2; color: #ef4444; }
+
+        .clear-confirm {
+            display: none; align-items: center; justify-content: space-between;
+            background: #fff5f5; border: 1px solid #fee2e2;
+            border-radius: 10px; padding: 10px 14px;
+            margin-bottom: 12px; font-size: 13px; color: #ef4444;
+        }
+        .clear-confirm.show { display: flex; }
+        .clear-confirm-btns { display: flex; gap: 8px; }
+        .clear-confirm-btns button {
+            padding: 5px 14px; border-radius: 7px;
+            border: none; font-size: 12px; font-weight: 500; cursor: pointer;
+        }
+        .btn-confirm-yes { background: #ef4444; color: #fff; }
+        .btn-confirm-no  { background: #f3f4f6; color: #555; }
+
+        .record-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 0; border-bottom: 1px solid #f3f4f6;
+            font-size: 13px;
+        }
+        .record-item:last-child { border-bottom: none; }
+        .record-main { flex: 1; color: #4b5563; }
+        .record-bmi  { font-weight: 700; color: #1e1b4b; font-size: 14px; }
+        .tag {
+            font-size: 11px; font-weight: 600;
+            padding: 3px 9px; border-radius: 20px; white-space: nowrap;
+        }
+        .tag-thin        { background: #dbeafe; color: #2563eb; }
+        .tag-normal      { background: #d1fae5; color: #059669; }
+        .tag-overweight  { background: #fef3c7; color: #d97706; }
+        .tag-obese       { background: #fee2e2; color: #dc2626; }
+        .record-date     { font-size: 11px; color: #d1d5db; }
+        .empty-tip       { text-align: center; color: #d1d5db; font-size: 13px; padding: 28px 0; }
+
+        /* ── 右侧标准面板 ── */
+        .stage-title {
+            font-size: 12px; font-weight: 700; color: #6366f1;
+            letter-spacing: 0.6px; text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+        .stage-item {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+        }
+        .stage-item:last-child { margin-bottom: 0; }
+        .stage-dot {
+            width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+        }
+        .stage-name  { font-size: 13px; font-weight: 600; color: #1e1b4b; }
+        .stage-range { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+
+        /* ── 手机端 ── */
+        @media (max-width: 580px) {
+            .layout { display: block; }
+            .right  { width: 100%; margin-bottom: 14px; }
+            .stage-grid {
+                display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px;
+            }
+            .stage-grid .stage-item { margin-bottom: 10px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="page-title">BMI 计算器</div>
+
+    <div class="layout">
+
+        <!-- 右侧：HTML 在前，手机 block 布局下置顶；桌面由 CSS order 排右 -->
+        <div class="right">
+            <div class="card">
+                <div class="stage-title">参考标准</div>
+                <div class="seg" style="margin-bottom:14px;">
+                    <button id="std-cn"   class="active" onclick="setStd('cn')">中国</button>
+                    <button id="std-who"  onclick="setStd('who')">WHO</button>
+                    <button id="std-asia" onclick="setStd('asia')">亚太</button>
+                </div>
+                <div class="stage-grid" id="stage-list"></div>
+            </div>
+        </div>
+
+        <div class="left">
+            <!-- 输入卡片 -->
+            <div class="card">
+                <div class="field">
+                    <label>身高</label>
+                    <div class="input-row">
+                        <input type="number" id="height" placeholder="170" min="50" max="250">
+                        <span class="unit-fixed">cm</span>
+                    </div>
+                </div>
+                <div class="field" style="margin-bottom:20px;">
+                    <label>体重</label>
+                    <div class="input-row">
+                        <input type="number" id="weight" placeholder="65" min="1" max="999" step="0.1">
+                        <div class="seg">
+                            <button id="btn-kg"  class="active" onclick="setUnit('kg')">公斤</button>
+                            <button id="btn-jin" onclick="setUnit('jin')">斤</button>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn-calc" onclick="calculate()">计 算 BMI</button>
+            </div>
+
+            <!-- 结果 -->
+            <div class="result-card" id="result-card">
+                <div class="result-top">
+                    <div class="bmi-circle">
+                        <div class="bmi-num" id="bmi-num">--</div>
+                        <div class="bmi-tag">BMI</div>
+                    </div>
+                    <div class="bmi-right">
+                        <div class="bmi-status-text" id="bmi-status"></div>
+                        <div class="bmi-sub" id="bmi-sub"></div>
+                    </div>
+                </div>
+                <div class="bmi-bar-wrap">
+                    <div class="bmi-bar-track">
+                        <div class="bmi-bar-fill" id="bmi-bar" style="width:0%"></div>
+                    </div>
+                    <div class="bmi-bar-labels">
+                        <span id="bar-l0">偏瘦</span>
+                        <span id="bar-l1">健康</span>
+                        <span id="bar-l2">超重</span>
+                        <span id="bar-l3">肥胖</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 记录 -->
+            <div class="card">
+                <div class="records-header">
+                    <span class="records-title">测量记录</span>
+                    <button class="btn-clear" onclick="showClearConfirm()">清空</button>
+                </div>
+                <div class="clear-confirm" id="clear-confirm">
+                    <span>确认清空所有记录？</span>
+                    <div class="clear-confirm-btns">
+                        <button class="btn-confirm-no"  onclick="hideClearConfirm()">取消</button>
+                        <button class="btn-confirm-yes" onclick="clearRecords()">清空</button>
+                    </div>
+                </div>
+                <div id="records-list"></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    let unit = 'kg';
+    let std  = 'cn';
+    let records = JSON.parse(localStorage.getItem('bmi2_records') || '[]');
+
+    const STANDARDS = {
+        cn:   { name: '中国标准',     ranges: [18.5, 24,   28  ] },
+        who:  { name: 'WHO 国际标准', ranges: [18.5, 25,   30  ] },
+        asia: { name: 'WHO 亚太标准', ranges: [18.5, 23,   25  ] },
+    };
+    const STAGES = [
+        { text: '偏瘦',    cls: 'thin',       color: '#60a5fa' },
+        { text: '健康体重', cls: 'normal',     color: '#34d399' },
+        { text: '超重',    cls: 'overweight', color: '#fbbf24' },
+        { text: '肥胖',    cls: 'obese',      color: '#f87171' },
+    ];
+
+    /* ── 标准切换 ── */
+    function setStd(s) {
+        std = s;
+        ['cn','who','asia'].forEach(k =>
+            document.getElementById('std-' + k).classList.toggle('active', k === s)
+        );
+        renderStages();
+        // 更新已有结果，不新增记录
+        const card = document.getElementById('result-card');
+        if (card.style.display !== 'none') {
+            const bmi = parseFloat(document.getElementById('bmi-num').textContent);
+            if (!isNaN(bmi)) {
+                const st = getStatus(bmi);
+                document.getElementById('bmi-status').textContent = st.text;
+                const sub = document.getElementById('bmi-sub');
+                sub.textContent = sub.textContent.replace(/·\s*.+$/, '· ' + STANDARDS[std].name);
+                updateBar(bmi);
+            }
+        }
+        renderRecords();
+    }
+
+    function renderStages() {
+        const { ranges } = STANDARDS[std];
+        const thresholds = [
+            '< ' + ranges[0],
+            ranges[0] + ' – ' + (ranges[1] - 0.1).toFixed(1),
+            ranges[1] + ' – ' + (ranges[2] - 0.1).toFixed(1),
+            '≥ ' + ranges[2],
+        ];
+        document.getElementById('stage-list').innerHTML = STAGES.map((s, i) => `
+            <div class="stage-item">
+                <div class="stage-dot" style="background:${s.color};box-shadow:0 0 6px ${s.color}88;"></div>
+                <div>
+                    <div class="stage-name">${s.text}</div>
+                    <div class="stage-range">${thresholds[i]}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    /* ── 单位切换 ── */
+    function setUnit(u) {
+        unit = u;
+        document.getElementById('btn-kg').classList.toggle('active', u === 'kg');
+        document.getElementById('btn-jin').classList.toggle('active', u === 'jin');
+    }
+
+    /* ── 状态判断 ── */
+    function getStatus(bmi) {
+        const { ranges } = STANDARDS[std];
+        if (bmi < ranges[0]) return STAGES[0];
+        if (bmi < ranges[1]) return STAGES[1];
+        if (bmi < ranges[2]) return STAGES[2];
+        return STAGES[3];
+    }
+
+    /* ── 进度条 ── */
+    function updateBar(bmi) {
+        // 把 BMI 映射到 0-100%，范围 14~40
+        const pct = Math.min(100, Math.max(0, (bmi - 14) / (40 - 14) * 100));
+        document.getElementById('bmi-bar').style.width = pct.toFixed(1) + '%';
+    }
+
+    /* ── 计算 ── */
+    function calculate() {
+        const h = parseFloat(document.getElementById('height').value);
+        let   w = parseFloat(document.getElementById('weight').value);
+        if (!h || !w || h <= 0 || w <= 0) { alert('请输入有效的身高和体重'); return; }
+
+        const weightKg  = unit === 'jin' ? w * 0.5 : w;
+        const bmi       = weightKg / Math.pow(h / 100, 2);
+        const bmiRound  = Math.round(bmi * 10) / 10;
+        const status    = getStatus(bmi);
+
+        // 显示结果
+        const card = document.getElementById('result-card');
+        card.style.display = 'block';
+        document.getElementById('bmi-num').textContent    = bmiRound;
+        document.getElementById('bmi-status').textContent = status.text;
+        document.getElementById('bmi-sub').textContent    =
+            '身高 ' + h + ' cm · 体重 ' + weightKg + ' 公斤 · ' + STANDARDS[std].name;
+        updateBar(bmi);
+
+        // 保存记录
+        const now     = new Date();
+        const dateStr = (now.getMonth() + 1) + '/' + now.getDate();
+        records.unshift({ h, w: weightKg, bmi: bmiRound, date: dateStr });
+        if (records.length > 30) records.pop();
+        localStorage.setItem('bmi2_records', JSON.stringify(records));
+        renderRecords();
+    }
+
+    /* ── 渲染记录 ── */
+    function renderRecords() {
+        const el = document.getElementById('records-list');
+        if (!records.length) {
+            el.innerHTML = '<div class="empty-tip">暂无记录</div>';
+            return;
+        }
+        el.innerHTML = records.map(r => {
+            const st = getStatus(r.bmi);
+            return `
+            <div class="record-item">
+                <div class="record-main">身高 ${r.h} cm &nbsp; 体重 ${r.w} 公斤</div>
+                <span class="record-bmi">BMI ${r.bmi}</span>
+                <span class="tag tag-${st.cls}">${st.text}</span>
+                <span class="record-date">${r.date}</span>
+            </div>`;
+        }).join('');
+    }
+
+    /* ── 清空 ── */
+    function showClearConfirm() {
+        if (!records.length) return;
+        document.getElementById('clear-confirm').classList.add('show');
+    }
+    function hideClearConfirm() {
+        document.getElementById('clear-confirm').classList.remove('show');
+    }
+    function clearRecords() {
+        records = [];
+        localStorage.removeItem('bmi2_records');
+        hideClearConfirm();
+        renderRecords();
+    }
+
+    // 回车计算
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+
+    renderStages();
+    renderRecords();
+</script>
+</body>
+</html>
